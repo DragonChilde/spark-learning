@@ -5,21 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9e53ea56-edd4-4cbe-bf91-391488139777" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/1.txt" beforeDir="false" afterPath="$PROJECT_DIR$/data/1.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/word.txt" beforeDir="false" afterPath="$PROJECT_DIR$/data/word.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/doc/SparkCore.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/SparkCore.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/03.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/03.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/04.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/04.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/05.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/05.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/06.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/06.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/07.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/07.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/08.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/08.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/09.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/09.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/11.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/11.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/13.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/13.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photos/spark/14.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photos/spark/14.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/spark-core/src/main/java/com/bigdata/core/wc/Spark04_WordCount.scala" beforeDir="false" afterPath="$PROJECT_DIR$/spark-core/src/main/java/com/bigdata/core/wc/Spark04_WordCount.scala" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -86,19 +76,20 @@
       <recent name="E:\Learning\spark-learning\spark-core\src\main\java\com\bigdata\core\test2" />
     </key>
     <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="com.bigdata.core.req" />
+      <recent name="com.bigdata.core.rdd.persist" />
       <recent name="com.bigdata.core.rdd.io" />
       <recent name="com.bigdata.core.rdd.dep" />
       <recent name="com.bigdata.core.rdd.builder" />
-      <recent name="com.bigdata.core.test3" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.Spark01_RDD_Part">
-    <configuration name="Spark01_RDD_Dep" type="Application" factoryName="Application" temporary="true">
-      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.rdd.dep.Spark01_RDD_Dep" />
+  <component name="RunManager" selected="Application.WordCountApplication">
+    <configuration name="Spark04_Req1_HotCategoryTop10Analysis3" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.req.Spark04_Req1_HotCategoryTop10Analysis3" />
       <module name="spark-core" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="com.bigdata.core.rdd.dep.*" />
+          <option name="PATTERN" value="com.bigdata.core.req.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -106,12 +97,12 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Spark01_RDD_IO_Load" type="Application" factoryName="Application" temporary="true">
-      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.rdd.io.Spark01_RDD_IO_Load" />
+    <configuration name="Spark05_Req2_HotCategoryTop10SessionAnalysis" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.req.Spark05_Req2_HotCategoryTop10SessionAnalysis" />
       <module name="spark-core" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="com.bigdata.core.rdd.io.*" />
+          <option name="PATTERN" value="com.bigdata.core.req.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -119,12 +110,12 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Spark01_RDD_IO_Save" type="Application" factoryName="Application" temporary="true">
-      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.rdd.io.Spark01_RDD_IO_Save" />
+    <configuration name="Spark06_Req3_PageflowAnalysis" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.req.Spark06_Req3_PageflowAnalysis" />
       <module name="spark-core" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="com.bigdata.core.rdd.io.*" />
+          <option name="PATTERN" value="com.bigdata.core.req.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -132,12 +123,12 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Spark01_RDD_Part" type="Application" factoryName="Application" temporary="true">
-      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.rdd.part.Spark01_RDD_Part" />
+    <configuration name="Spark06_Req3_PageflowfilterAnalysis" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.req.Spark06_Req3_PageflowfilterAnalysis" />
       <module name="spark-core" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="com.bigdata.core.rdd.part.*" />
+          <option name="PATTERN" value="com.bigdata.core.req.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -145,12 +136,12 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Spark02_RDD_Dep" type="Application" factoryName="Application" temporary="true">
-      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.rdd.dep.Spark02_RDD_Dep" />
+    <configuration name="WordCountApplication" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="com.bigdata.core.framework.application.WordCountApplication" />
       <module name="spark-core" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="com.bigdata.core.rdd.dep.*" />
+          <option name="PATTERN" value="com.bigdata.core.framework.application.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -160,11 +151,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Application.Spark01_RDD_Part" />
-        <item itemvalue="Application.Spark01_RDD_IO_Load" />
-        <item itemvalue="Application.Spark01_RDD_IO_Save" />
-        <item itemvalue="Application.Spark02_RDD_Dep" />
-        <item itemvalue="Application.Spark01_RDD_Dep" />
+        <item itemvalue="Application.WordCountApplication" />
+        <item itemvalue="Application.Spark06_Req3_PageflowfilterAnalysis" />
+        <item itemvalue="Application.Spark06_Req3_PageflowAnalysis" />
+        <item itemvalue="Application.Spark05_Req2_HotCategoryTop10SessionAnalysis" />
+        <item itemvalue="Application.Spark04_Req1_HotCategoryTop10Analysis3" />
       </list>
     </recent_temporary>
   </component>
@@ -207,10 +198,32 @@
       <workItem from="1713529142345" duration="6000" />
       <workItem from="1713822646620" duration="3044000" />
       <workItem from="1713857262355" duration="1309000" />
+      <workItem from="1713869036573" duration="2100000" />
+      <workItem from="1713915321668" duration="1998000" />
+      <workItem from="1713998877930" duration="13156000" />
+      <workItem from="1714052767225" duration="3858000" />
+      <workItem from="1714115586552" duration="3640000" />
+      <workItem from="1714167513212" duration="12997000" />
+      <workItem from="1714375555875" duration="11034000" />
+      <workItem from="1714435255951" duration="13262000" />
+      <workItem from="1714544376558" duration="9502000" />
+      <workItem from="1714614382762" duration="3624000" />
+      <workItem from="1714644948423" duration="6000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="scala-line">
+          <url>jar://$PROJECT_DIR$/../../Program Files/maven/repository/org/apache/spark/spark-yarn_2.13/3.5.1/spark-yarn_2.13-3.5.1-sources.jar!/org/apache/spark/deploy/yarn/ApplicationMaster.scala</url>
+          <line>862</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

@@ -5491,13 +5491,137 @@ object Spark01_RDD_Operator_Action {
 
 ##### WordCount多种方式
 
-```
+```scala
+package com.bigdata.core.wc
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.{SparkConf, SparkContext}
+
+import scala.collection.mutable
+
+/**
+ * @program: spark-learning
+ * @description: ${description}
+ * @author: JunWen
+ * @create: 2024-04-18 15:33
+ * */
+object Spark04_WordCount {
+
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+    wordcount91011(sparkContext)
+    sparkContext.stop()
+  }
+
+  // groupBy
+  def wordCount1(sc: SparkContext): Unit = {
+    val rdd = sc.makeRDD(List("Hello Scala", "Hello Spark"))
+    val words = rdd.flatMap(_.split(" "))
+    val group: RDD[(String, Iterable[String])] = words.groupBy(word => word)
+    val wordCount: RDD[(String, Int)] = group.mapValues(iter => iter.size)
+    wordCount.collect().foreach(println)
+  }
+
+  // groupByKey
+  def wordCount2(sc: SparkContext): Unit = {
+    val rdd = sc.makeRDD(List("Hello Scala", "Hello Spark"))
+    val words = rdd.flatMap(_.split(" "))
+    val wordOne = words.map((_, 1))
+    val group: RDD[(String, Iterable[Int])] = wordOne.groupByKey()
+    val wordCount: RDD[(String, Int)] = group.mapValues(iter => iter.size)
+    wordCount.collect().foreach(println)
+  }
+
+  // reduceByKey
+  def wordCount3(sc: SparkContext): Unit = {
+    val rdd = sc.makeRDD(List("Hello Scala", "Hello Spark"))
+    val words = rdd.flatMap(_.split(" "))
+    val wordOne = words.map((_, 1))
+    val wordCount = wordOne.reduceByKey(_ + _)
+    wordCount.collect().foreach(println)
+  }
+
+  // aggregateByKey
+  def wordCount4(sc: SparkContext): Unit = {
+    val rdd = sc.makeRDD(List("Hello Scala", "Hello Spark"))
+    val words = rdd.flatMap(_.split(" "))
+    val wordOne = words.map((_, 1))
+    val wordCount: RDD[(String, Int)] = wordOne.aggregateByKey(0)(_ + _, _ + _)
+    wordCount.collect().foreach(println)
+  }
+
+  // foldByKey
+  def wordCount5(sc: SparkContext): Unit = {
+    val rdd = sc.makeRDD(List("Hello Scala", "Hello Spark"))
+    val words = rdd.flatMap(_.split(" "))
+    val wordOne = words.map((_, 1))
+    val wordCount: RDD[(String, Int)] = wordOne.foldByKey(0)(_ + _)
+    wordCount.collect().foreach(println)
+  }
+
+  // combineByKey
+  def wordCount6(sc: SparkContext): Unit = {
+    val rdd = sc.makeRDD(List("Hello Scala", "Hello Spark"))
+    val words = rdd.flatMap(_.split(" "))
+    val wordOne = words.map((_, 1))
+    val wordCount: RDD[(String, Int)] = wordOne.combineByKey(
+      v => v,
+      (x: Int, y) => x + y,
+      (x: Int, y: Int) => x + y
+    )
+    wordCount.collect().foreach(println)
+  }
+
+  // countByKey
+  def wordCount7(sc: SparkContext): Unit = {
+    val rdd = sc.makeRDD(List("Hello Scala", "Hello Spark"))
+    val words = rdd.flatMap(_.split(" "))
+    val wordOne = words.map((_, 1))
+    val wordCount: collection.Map[String, Long] = wordOne.countByKey()
+    println(wordCount)
+  }
+
+  // countByValue
+  def wordCount8(sc: SparkContext): Unit = {
+    val rdd = sc.makeRDD(List("Hello Scala", "Hello Spark"))
+    val words = rdd.flatMap(_.split(" "))
+    val wordCount: collection.Map[String, Long] = words.countByValue()
+    println(wordCount)
+  }
+
+
+  // reduce, aggregate, fold
+  def wordcount91011(sc: SparkContext): Unit = {
+    val rdd = sc.makeRDD(List("Hello Scala", "Hello Spark"))
+    val words = rdd.flatMap(_.split(" "))
+
+    // 【（word, count）,(word, count)】
+    // word => Map[(word,1)]
+    val mapWord = words.map(
+      word => {
+        mutable.Map[String, Long]((word, 1))
+      }
+    )
+
+    val wordCount = mapWord.reduce(
+      (map1, map2) => {
+        map2.foreach {
+          case (word, count) => {
+            val newCount = map1.getOrElse(word, 0L) + count
+            map1.update(word, newCount)
+          }
+        }
+        map1
+      }
+    )
+
+    println(wordCount)
+  }
+
+}
 
 ```
-
-
-
-#####
 
 #### RDD 序列化
 
@@ -6489,45 +6613,475 @@ object Spark07_RDD_Operator_Action {
 
 #### RDD 持久化
 
+前言
+
+```scala
+object Spark01_RDD_Persist {
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+
+    val list = List("Hello Scala", "Hello Spark")
+    val rdd = sparkContext.makeRDD(list)
+    val flatRDD = rdd.flatMap(_.split(" "))
+    val mapRDD = flatRDD.map((_, 1))
+    val reduceRDD = mapRDD.reduceByKey(_ + _)
+    reduceRDD.collect().foreach(println)
+    println("**************************************")
+
+    val rdd2 = sparkContext.makeRDD(list)
+    val flatRDD2 = rdd2.flatMap(_.split(" "))
+    val mapRDD2 = flatRDD2.map((_, 1))
+    val groupRDD = mapRDD2.groupByKey()
+    groupRDD.collect().foreach(println)
+
+    sparkContext.stop()
+  }
+  
+}
+```
+
+以上代码输出如下
+
+```
+(Spark,1)
+(Hello,2)
+(Scala,1)
+**************************************
+(Spark,Seq(1))
+(Hello,Seq(1, 1))
+(Scala,Seq(1))
+```
+
+这里有个问题,是否发现代码的重复度比较高,因此把代码简化如下
+
+```scala
+object Spark02_RDD_Persist {
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+
+    val list = List("Hello Scala", "Hello Spark")
+    val rdd = sparkContext.makeRDD(list)
+    val flatRDD = rdd.flatMap(_.split(" "))
+    val mapRDD = flatRDD.map((_, 1))
+    val reduceRDD = mapRDD.reduceByKey(_ + _)
+    reduceRDD.collect().foreach(println)
+    println("**************************************")
+    val groupRDD = mapRDD.groupByKey()
+    groupRDD.collect().foreach(println)
+
+    sparkContext.stop()
+  }
+
+}
+```
+
+上面的代码执行输出结果如下,最终输出结果与上一致,并且对象都得到了重用,这里引出一个问题,是否底层是一样呢?如下图
+
+```
+(Spark,1)
+(Hello,2)
+(Scala,1)
+**************************************
+(Spark,Seq(1))
+(Hello,Seq(1, 1))
+(Scala,Seq(1))
+```
+
+![](../photos/spark/67.jpg)
+
+调整代码如下进行验证
+
+```scala
+object Spark02_RDD_Persist {
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+
+    val list = List("Hello Scala", "Hello Spark")
+    val rdd = sparkContext.makeRDD(list)
+    val flatRDD = rdd.flatMap(_.split(" "))
+    val mapRDD = flatRDD.map(word => {
+      println("@@@@@@@@@")
+      (word, 1)
+    })
+    val reduceRDD = mapRDD.reduceByKey(_ + _)
+    reduceRDD.collect().foreach(println)
+    println("**************************************")
+    val groupRDD = mapRDD.groupByKey()
+    groupRDD.collect().foreach(println)
+
+    sparkContext.stop()
+  }
+}
+```
+
+结果输出如下,说明数据重复读取重复执行,这样如果在数据量比较大的时候性能决定会受影响
+
+```
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+(Spark,1)
+(Hello,2)
+(Scala,1)
+**************************************
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+(Spark,Seq(1))
+(Hello,Seq(1, 1))
+(Scala,Seq(1))
+```
+
+因此为了提高性能就不能重复读取,因此引出把数据持久化就不需要进行保存再重复读取,如下
+
+```scala
+object Spark03_RDD_Persist {
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+
+    val list = List("Hello Scala", "Hello Spark")
+    val rdd = sparkContext.makeRDD(list)
+    val flatRDD = rdd.flatMap(_.split(" "))
+    val mapRDD = flatRDD.map(word => {
+      println("@@@@@@@@@")
+      (word, 1)
+    })
+      // cache默认持久化的操作，只能将数据保存到内存中，如果想要保存到磁盘文件，需要更改存储级别
+      //mapRDD.cache()
+
+      // 持久化操作必须在行动算子执行时完成的。
+      mapRDD.persist(StorageLevel.DISK_ONLY)
+    val reduceRDD = mapRDD.reduceByKey(_ + _)
+    reduceRDD.collect().foreach(println)
+    println("**************************************")
+    val groupRDD = mapRDD.groupByKey()
+    groupRDD.collect().foreach(println)
+
+    sparkContext.stop()
+  }
+}
+
+```
+
+上面代码结果如下,最终因为把数据暂存在内存中,可以重复使用
+
+```
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+(Spark,1)
+(Hello,2)
+(Scala,1)
+**************************************
+(Spark,Seq(1))
+(Hello,Seq(1, 1))
+(Scala,Seq(1))
+```
+
+![](../photos/spark/68.jpg)
+
 1. RDD Cache 缓存
 
-   RDD 通过 Cache 或者 Persist 方法将前面的计算结果缓存，默认情况下会把数据以缓存 在 JVM 的堆内存中。但是并不是这两个方法被调用时立即缓存，而是触发后面的 action 算 子时，该 RDD 将会被缓存在计算节点的内存中，并供后面重用
+   RDD 通过 Cache 或者 Persist 方法将前面的计算结果缓存，默认情况下会把数据以缓存在 JVM 的堆内存中。但是并不是这两个方法被调用时立即缓存，而是触发后面的 action 算子时，该 RDD 将会被缓存在计算节点的内存中，并供后面重用
 
    ```scala
-   
+   // cache 操作会增加血缘关系，不改变原有的血缘关系
+   println(wordToOneRdd.toDebugString)
+   // 数据缓存。
+   wordToOneRdd.cache()
+   // 可以更改存储级别
+   //mapRdd.persist(StorageLevel.MEMORY_AND_DISK_2)
    ```
 
    存储级别
 
    ```scala
-   
+   object StorageLevel {
+     val NONE = new StorageLevel(false, false, false, false)
+     val DISK_ONLY = new StorageLevel(true, false, false, false)
+     val DISK_ONLY_2 = new StorageLevel(true, false, false, false, 2)
+     val DISK_ONLY_3 = new StorageLevel(true, false, false, false, 3)
+     val MEMORY_ONLY = new StorageLevel(false, true, false, true)
+     val MEMORY_ONLY_2 = new StorageLevel(false, true, false, true, 2)
+     val MEMORY_ONLY_SER = new StorageLevel(false, true, false, false)
+     val MEMORY_ONLY_SER_2 = new StorageLevel(false, true, false, false, 2)
+     val MEMORY_AND_DISK = new StorageLevel(true, true, false, true)
+     val MEMORY_AND_DISK_2 = new StorageLevel(true, true, false, true, 2)
+     val MEMORY_AND_DISK_SER = new StorageLevel(true, true, false, false)
+     val MEMORY_AND_DISK_SER_2 = new StorageLevel(true, true, false, false, 2)
+     val OFF_HEAP = new StorageLevel(true, true, true, false, 1)
    ```
 
    ![](../photos/spark/40.jpg)
 
-   缓存有可能丢失，或者存储于内存的数据由于内存不足而被删除，RDD 的缓存容错机 制保证了即使缓存丢失也能保证计算的正确执行。通过基于 RDD 的一系列转换，丢失的数 据会被重算，由于 RDD 的各个 Partition 是相对独立的，因此只需要计算丢失的部分即可， 并不需要重算全部 Partition。
+   缓存有可能丢失，或者存储于内存的数据由于内存不足而被删除，RDD 的缓存容错机制保证了即使缓存丢失也能保证计算的正确执行。通过基于 RDD 的一系列转换，丢失的数据会被重算，由于 RDD 的各个 Partition 是相对独立的，因此只需要计算丢失的部分即可， 并不需要重算全部 Partition。
 
-   Spark 会自动对一些 Shuffle 操作的中间数据做持久化操作(比如：reduceByKey)。这样 做的目的是为了当一个节点 Shuffle 失败了避免重新计算整个输入。但是，在实际使用的时 候，如果想重用数据，仍然建议调用 persist 或 cache
+   Spark 会自动对一些 `Shuffle `操作的中间数据做持久化操作(比如：`reduceByKey`)。这样做的目的是为了当一个节点 `Shuffle `失败了避免重新计算整个输入。但是，在实际使用的时候，如果想重用数据，仍然建议调用 `persist `或 `cache`
 
 2. RDD CheckPoint 检查点
 
    所谓的检查点其实就是通过将 RDD 中间结果写入磁盘
 
-   由于血缘依赖过长会造成容错成本过高，这样就不如在中间阶段做检查点容错，如果检查点 之后有节点出现问题，可以从检查点开始重做血缘，减少了开销。
+   由于血缘依赖过长会造成容错成本过高，这样就不如在中间阶段做检查点容错，如果检查点之后有节点出现问题，可以从检查点开始重做血缘，减少了开销。
 
-   对 RDD 进行 checkpoint 操作并不会马上被执行，必须执行 Action 操作才能触发
+   对 RDD 进行 `checkpoint `操作并不会马上被执行，必须执行 Action 操作才能触发
 
    ```scala
+   object Spark04_RDD_Persist {
    
+     def main(args: Array[String]): Unit = {
+       val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+       val sparkContext: SparkContext = new SparkContext(sparkConf)
+       sparkContext.setCheckpointDir("cp")
+   
+       val list = List("Hello Scala", "Hello Spark")
+       val rdd = sparkContext.makeRDD(list)
+       val flatRDD = rdd.flatMap(_.split(" "))
+       val mapRDD = flatRDD.map(word => {
+         println("@@@@@@@@@")
+         (word, 1)
+       })
+       // checkpoint 需要落盘，需要指定检查点保存路径
+       // 检查点路径保存的文件，当作业执行完毕后，不会被删除
+       // 一般保存路径都是在分布式存储系统：HDFS
+       mapRDD.checkpoint()
+   
+       val reduceRDD = mapRDD.reduceByKey(_ + _)
+       reduceRDD.collect().foreach(println)
+       println("**************************************")
+       val groupRDD = mapRDD.groupByKey()
+       groupRDD.collect().foreach(println)
+   
+       sparkContext.stop()
+     }
+   
+   }
    ```
 
 3. 缓存和检查点区别
 
    1. Cache 缓存只是将数据保存起来，不切断血缘依赖。Checkpoint 检查点切断血缘依赖。
-   2. Cache 缓存的数据通常存储在磁盘、内存等地方，可靠性低。Checkpoint 的数据通常存 储在 HDFS 等容错、高可用的文件系统，可靠性高
-   3. 建议对 checkpoint()的 RDD 使用 Cache 缓存，这样 checkpoint 的 job 只需从 Cache 缓存 中读取数据即可，否则需要再从头计算一次 RDD
+   2. Cache 缓存的数据通常存储在磁盘、内存等地方，可靠性低。Checkpoint 的数据通常存储在 HDFS 等容错、高可用的文件系统，可靠性高
+   3. 建议对 `checkpoint()`的 RDD 使用 Cache 缓存，这样 checkpoint 的 job 只需从 Cache 缓存中读取数据即可，否则需要再从头计算一次 RDD
+   
+   ```scala
+   object Spark05_RDD_Persist {
+   
+     def main(args: Array[String]): Unit = {
+   
+       // cache : 将数据临时存储在内存中进行数据重用
+       // persist : 将数据临时存储在磁盘文件中进行数据重用
+       //           涉及到磁盘IO，性能较低，但是数据安全
+       //           如果作业执行完毕，临时保存的数据文件就会丢失
+       // checkpoint : 将数据长久地保存在磁盘文件中进行数据重用
+       //           涉及到磁盘IO，性能较低，但是数据安全
+       //           为了保证数据安全，所以一般情况下，会独立执行作业
+       //           为了能够提高效率，一般情况下，是需要和cache联合使用
+   
+       val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+       val sparkContext: SparkContext = new SparkContext(sparkConf)
+       sparkContext.setCheckpointDir("cp")
+   
+       val list = List("Hello Scala", "Hello Spark")
+       val rdd = sparkContext.makeRDD(list)
+       val flatRDD = rdd.flatMap(_.split(" "))
+       val mapRDD = flatRDD.map(word => {
+         println("@@@@@@@@@")
+         (word, 1)
+       })
+   
+       mapRDD.cache()
+       mapRDD.checkpoint()
+   
+       val reduceRDD = mapRDD.reduceByKey(_ + _)
+       reduceRDD.collect().foreach(println)
+       println("**************************************")
+       val groupRDD = mapRDD.groupByKey()
+       groupRDD.collect().foreach(println)
+   
+       sparkContext.stop()
+     }
+   
+   }
+   
+   ```
+   
+   原码解析,直接跳到`SparkContext.scala`的`runJob()`,如下,前面之前已经有介绍过,略
+   
+   ```scala
+     def runJob[T, U: ClassTag](
+         rdd: RDD[T],
+         func: (TaskContext, Iterator[T]) => U,
+         partitions: Seq[Int],
+         resultHandler: (Int, U) => Unit): Unit = {
+       if (stopped.get()) {
+         throw new IllegalStateException("SparkContext has been shutdown")
+       }
+       val callSite = getCallSite
+       val cleanedFunc = clean(func)
+       logInfo("Starting job: " + callSite.shortForm)
+       if (conf.getBoolean("spark.logLineage", false)) {
+         logInfo("RDD's recursive dependencies:\n" + rdd.toDebugString)
+       }
+       dagScheduler.runJob(rdd, cleanedFunc, partitions, callSite, resultHandler, localProperties.get)
+       progressBar.foreach(_.finishAll())
+       // 点击进入,如下
+       rdd.doCheckpoint()
+     }
+   ```
+   
+   `RDD.scala`
+   
+   ```scala
+     private[spark] def doCheckpoint(): Unit = {
+       RDDOperationScope.withScope(sc, "checkpoint", allowNesting = false, ignoreParent = true) {
+         if (!doCheckpointCalled) {
+           doCheckpointCalled = true
+           if (checkpointData.isDefined) {
+             if (checkpointAllMarkedAncestors) {
+               // TODO We can collect all the RDDs that needs to be checkpointed, and then checkpoint
+               // them in parallel.
+               // Checkpoint parents first because our lineage will be truncated after we
+               // checkpoint ourselves
+               dependencies.foreach(_.rdd.doCheckpoint())
+             }
+               // 点击进入,如下
+             checkpointData.get.checkpoint()
+           } else {
+             dependencies.foreach(_.rdd.doCheckpoint())
+           }
+         }
+       }
+     }
+   ```
+   
+   `CheckpointState.scala`
+   
+   ```scala
+     final def checkpoint(): Unit = {
+       // Guard against multiple threads checkpointing the same RDD by
+       // atomically flipping the state of this RDDCheckpointData
+       RDDCheckpointData.synchronized {
+         if (cpState == Initialized) {
+           cpState = CheckpointingInProgress
+         } else {
+           return
+         }
+       }
+   
+         // 继续点击,进入,如下
+       val newRDD = doCheckpoint()
+   
+       // Update our state and truncate the RDD lineage
+       RDDCheckpointData.synchronized {
+         cpRDD = Some(newRDD)
+         cpState = Checkpointed
+         rdd.markCheckpointed()
+       }
+     }
+   
+   	// 是一个抽像方法,按F4查找其实现方法,如下
+   	protected def doCheckpoint(): CheckpointRDD[T]
+   ```
+   
+   进入`LocalRDDCheckpointData.doCheckpoint()`,如下
+   
+   ![](../photos/spark/69.jpg)
+   
+   ```scala
+     protected override def doCheckpoint(): CheckpointRDD[T] = {
+       val level = rdd.getStorageLevel
+   
+       // Assume storage level uses disk; otherwise memory eviction may cause data loss
+       assume(level.useDisk, s"Storage level $level is not appropriate for local checkpointing")
+   
+       // Not all actions compute all partitions of the RDD (e.g. take). For correctness, we
+       // must cache any missing partitions. TODO: avoid running another job here (SPARK-8582).
+       val action = (tc: TaskContext, iterator: Iterator[T]) => Utils.getIteratorSize(iterator)
+       val missingPartitionIndices = rdd.partitions.map(_.index).filter { i =>
+         !SparkEnv.get.blockManager.master.contains(RDDBlockId(rdd.id, i))
+       }
+       if (missingPartitionIndices.nonEmpty) {
+         // 注意这里的runJob,就是触发作业的执行操作
+         rdd.sparkContext.runJob(rdd, action, missingPartitionIndices)
+       }
+   
+       new LocalCheckpointRDD[T](rdd)
+     }
+   
+   ```
 
+另外在使用`cache`和`checkpoint`的血缘关系会有所不同,分别使用`cache()`和`checkpoint()`打印如下
 
+```scala
+object Spark06_RDD_Persist {
+
+  def main(args: Array[String]): Unit = {
+
+    // cache : 将数据临时存储在内存中进行数据重用
+    //         会在血缘关系中添加新的依赖。一旦，出现问题，可以重头读取数据
+    // persist : 将数据临时存储在磁盘文件中进行数据重用
+    //           涉及到磁盘IO，性能较低，但是数据安全
+    //           如果作业执行完毕，临时保存的数据文件就会丢失
+    // checkpoint : 将数据长久地保存在磁盘文件中进行数据重用
+    //           涉及到磁盘IO，性能较低，但是数据安全
+    //           为了保证数据安全，所以一般情况下，会独立执行作业
+    //           为了能够提高效率，一般情况下，是需要和cache联合使用
+    //           执行过程中，会切断血缘关系。重新建立新的血缘关系
+    //           checkpoint等同于改变数据源
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+    sparkContext.setCheckpointDir("cp")
+
+    val list = List("Hello Scala", "Hello Spark")
+    val rdd = sparkContext.makeRDD(list)
+    val flatRDD = rdd.flatMap(_.split(" "))
+    val mapRDD = flatRDD.map(word => {
+      println("@@@@@@@@@")
+      (word, 1)
+    })
+
+    mapRDD.cache()
+
+    // mapRDD.checkpoint()
+
+    val reduceRDD = mapRDD.reduceByKey(_ + _)
+    reduceRDD.collect().foreach(println)
+    println("**************************************")
+    val groupRDD = mapRDD.groupByKey()
+    groupRDD.collect().foreach(println)
+
+    println(mapRDD.toDebugString)
+
+    sparkContext.stop()
+  }
+
+}
+
+```
+
+注意在使用cahce下面的调试输出,可以看到多了一个`CachedPartitions`,会在血缘关系中添加新的依赖。一旦，出现问题，可以重头读取数据
+
+```scala
+(1) MapPartitionsRDD[2] at map at Spark06_RDD_Persist.scala:21 [Memory Deserialized 1x Replicated]
+ |       CachedPartitions: 1; MemorySize: 368.0 B; DiskSize: 0.0 B
+ |  MapPartitionsRDD[1] at flatMap at Spark06_RDD_Persist.scala:20 [Memory Deserialized 1x Replicated]
+ |  ParallelCollectionRDD[0] at makeRDD at Spark06_RDD_Persist.scala:19 [Memory Deserialized 1x Replicated]
+```
+
+在使用checkpoint的调试输出,多了一个`ReliableCheckpointRDD`,执行过程中，会切断血缘关系。重新建立新的血缘关系
+
+```scala
+(1) MapPartitionsRDD[2] at map at Spark06_RDD_Persist.scala:33 []
+ |  ReliableCheckpointRDD[4] at collect at Spark06_RDD_Persist.scala:43 []
+```
 
 #### RDD 分区器
 
@@ -6826,34 +7380,304 @@ object Spark01_RDD_IO_Save {
 
 ## 累加器
 
+### 前言
+
+之前计算分区内的数是使用reduce进行合并计算,假如把代码调整为如下,使用foreach进行循环累加,可惜结果并不如想像中的为10,为何呢?
+
+```scala
+object Spark01_Acc {
+
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+
+    val rdd = sparkContext.makeRDD(List(1, 2, 3, 4))
+
+    // reduce : 分区内计算，分区间计算
+    //val i: Int = rdd.reduce(_+_)
+    //println(i)
+    var sum = 0
+    rdd.foreach(
+      num => {
+        sum += num
+      }
+    )
+
+    println("sum = " + sum) //sum = 0
+
+    sparkContext.stop()
+  }
+
+}
+```
+
+通过下图可以清楚看到在`Executor`取了sum值后无法把计算后的结果返回到`Driver`,因为造成最终的结果并不符合我们的预期
+
+![](../photos/spark/70.jpg)
+
 ### 实现原理
 
-累加器用来把 Executor 端变量信息聚合到 Driver 端。在 Driver 程序中定义的变量，在 Executor 端的每个 Task 都会得到这个变量的一份新的副本，每个 task 更新这些副本的值后， 传回 Driver 端进行 merge
+累加器用来把 `Executor `端变量信息聚合到 `Driver `端。在 `Driver `程序中定义的变量，在 `Executor `端的每个 Task 都会得到这个变量的一份新的副本，每个 task 更新这些副本的值后， 传回 `Driver` 端进行 merge
 
 ### 基础编程
 
 #### 系统累加器
 
 ```scala
+object Spark02_Acc {
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
 
+    val rdd = sparkContext.makeRDD(List(1, 2, 3, 4))
+
+    // 获取系统累加器
+    // Spark默认就提供了简单数据聚合的累加器
+    val sumAcc = sparkContext.longAccumulator("sum")
+    /*    sparkContext.doubleAccumulator
+        sparkContext.collectionAccumulator*/
+    rdd.foreach(
+      num => {
+        sumAcc.add(num)
+      }
+    )
+    println(sumAcc.value) //10
+
+    sparkContext.stop()
+  }
+}
+```
+
+#### 累加器问题
+
+如下
+
+- 当没有行动算子时,计算结果为0
+- 当使用了多个行动算子,计算结果最进行了多次计算为20
+
+```scala
+object Spark03_Acc {
+
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+
+    val rdd = sparkContext.makeRDD(List(1, 2, 3, 4))
+
+    // 获取系统累加器
+    // Spark默认就提供了简单数据聚合的累加器
+    val sumAcc = sparkContext.longAccumulator("sum")
+    /*    sparkContext.doubleAccumulator
+        sparkContext.collectionAccumulator*/
+
+    val mapRDD = rdd.map(
+      num => {
+        // 使用累加器
+        sumAcc.add(num)
+        num
+      }
+    )
+    // 获取累加器的值
+    // 少加：转换算子中调用累加器，如果没有行动算子的话，那么不会执行
+    // 多加：转换算子中调用累加器，如果没有行动算子的话，那么不会执行
+    // 一般情况下，累加器会放置在行动算子进行操作
+    mapRDD.collect()
+    mapRDD.collect()
+
+    println(sumAcc.value) //20
+
+    sparkContext.stop()
+  }
+  
+}
 ```
 
 #### 自定义累加器
 
 ```scala
+/**
+ * @program: spark-learning
+ * @description: 自定义累加器
+ * @author: JunWen
+ * @create: 2024-04-25 11:12
+ * */
+object Spark04_Acc_WordCount {
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
 
+    val rdd = sparkContext.makeRDD(List("hello", "spark", "hello"))
+
+    // 累加器 : WordCount
+    // 创建累加器对象
+    val wcAcc = new MyAccumulator()
+    // 向Spark进行注册
+    sparkContext.register(wcAcc, "wordCountAcc")
+
+    rdd.foreach(
+      word => {
+        // 数据的累加（使用累加器）
+        wcAcc.add(word)
+      }
+    )
+
+    // 获取累加器累加的结果
+    println(wcAcc.value) //HashMap(spark -> 1, hello -> 2)
+
+    sparkContext.stop()
+  }
+
+  /*
+        自定义数据累加器：WordCount
+        1. 继承AccumulatorV2, 定义泛型
+           IN : 累加器输入的数据类型 String
+           OUT : 累加器返回的数据类型 mutable.Map[String, Long]
+        2. 重写方法（6）
+       */
+  class MyAccumulator extends AccumulatorV2[String, mutable.Map[String, Long]] {
+    // 返回累加器的结果 （Out）
+    private var wcMap = mutable.Map[String, Long]()
+
+    // 判断是否初始状态
+    override def isZero: Boolean = {
+      wcMap.isEmpty
+    }
+
+    // 复制累加器
+    override def copy(): AccumulatorV2[String, mutable.Map[String, Long]] = {
+      new MyAccumulator()
+    }
+
+    // 重置累加器
+    override def reset(): Unit = {
+      wcMap.clear()
+    }
+
+    // 获取累加器需要计算的值
+    override def add(v: String): Unit = {
+      // 查询 map 中是否存在相同的单词
+      // 如果有相同的单词，那么单词的数量加 1
+      // 如果没有相同的单词，那么在 map 中增加这个单词
+      val newCnt = wcMap.getOrElse(v, 0L) + 1
+      wcMap.update(v, newCnt)
+    }
+
+    // Driver合并多个累加器
+    override def merge(other: AccumulatorV2[String, mutable.Map[String, Long]]): Unit = {
+      val map1 = this.wcMap
+      val map2 = other.value
+
+      map2.foreach {
+        case (word, count) => {
+          val newCount = map1.getOrElse(word, 0L) + count
+          map1.update(word, newCount)
+        }
+      }
+
+    }
+
+    // 累加器结果
+    override def value: mutable.Map[String, Long] = {
+      wcMap
+    }
+  }
+
+}
 ```
 
 ## 广播变量
 
+### 前言
+
+之前有介绍过`join`会导致数据量几何增长,因此把代码调整为使用map的方式进行构造,如下,那这又会引出另外一个问题
+
+```scala
+object Spark05_Bc {
+
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+    
+    val rdd1 = sparkContext.makeRDD(
+      List(
+        ("a", 1), ("b", 2), ("c", 3)
+      )
+    )
+
+    //        val rdd2 = sc.makeRDD(List(
+    //            ("a", 4),("b", 5),("c", 6)
+    //        ))
+
+    val map = mutable.Map(("a", 4), ("b", 5), ("c", 6))
+
+    // join会导致数据量几何增长，并且会影响shuffle的性能，不推荐使用
+    //val joinRDD: RDD[(String, (Int, Int))] = rdd1.join(rdd2)
+    //joinRDD.collect().foreach(println)
+    // (a, 1),    (b, 2),    (c, 3)
+    // (a, (1,4)),(b, (2,5)),(c, (3,6))
+
+    rdd1.map {
+      case (w, c) => {
+        val l: Int = map.getOrElse(w, 0)
+        (w, (c, l))
+      }
+    }.collect().foreach(println)
+
+    /*
+    (a,(1,4))
+    (b,(2,5))
+    (c,(3,6))
+     */
+
+    sparkContext.stop()
+  }
+}
+```
+
+当如果数据量比较大的情况下,每个Task都会有map的数据,这就会出现大量的重复数据,占用大量的内存
+
+![](../photos/spark/71.jpg)
+
 ### 实现原理
 
-广播变量用来高效分发较大的对象。向所有工作节点发送一个较大的只读值，以供一个 或多个 Spark 操作使用。比如，如果你的应用需要向所有节点发送一个较大的只读查询表， 广播变量用起来都很顺手。在多个并行操作中使用同一个变量，但是 Spark 会为每个任务 分别发送
+广播变量用来高效分发较大的对象。向所有工作节点发送一个较大的只读值，以供一个或多个 Spark 操作使用。比如，如果你的应用需要向所有节点发送一个较大的只读查询表， 广播变量用起来都很顺手。在多个并行操作中使用同一个变量，但是 Spark 会为每个任务分别发送
 
 ### 基础编程
 
 ```scala
+object Spark06_Bc {
 
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("WordCount")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+
+    val rdd1 = sparkContext.makeRDD(
+      List(
+        ("a", 1), ("b", 2), ("c", 3)
+      )
+    )
+
+    val map = mutable.Map(("a", 4), ("b", 5), ("c", 6))
+    // 封装广播变量
+    val bc: Broadcast[mutable.Map[String, Int]] = sparkContext.broadcast(map)
+
+    rdd1.map {
+      case (w, c) => {
+        // 方法广播变量
+        val l = bc.value.getOrElse(w, 0)
+        (w, (c, l))
+      }
+    }.collect().foreach(println)
+     /*
+    (a,(1,4))
+    (b,(2,5))
+    (c,(3,6))
+     */
+    
+    sparkContext.stop()
+  }
+
+}
 ```
 
 ------
@@ -6864,37 +7688,52 @@ object Spark01_RDD_IO_Save {
 
 ![](../photos/spark/41.jpg)
 
-上面的数据图是从数据文件中截取的一部分内容，表示为电商网站的用户行为数据，主 要包含用户的 4 种行为：搜索，点击，下单，支付。数据规则如下
+上面的数据图是从数据文件中截取的一部分内容，表示为电商网站的用户行为数据，主要包含用户的 4 种行为：搜索，点击，下单，支付。数据规则如下
 
 - 数据文件中每行数据采用下划线分隔数据
 - 每一行数据表示用户的一次行为，这个行为只能是 4 种行为的一种
 - 如果搜索关键字为 null,表示数据不是搜索数据
 - 如果点击的品类 ID 和产品 ID 为-1，表示数据不是点击数据
-- 针对于下单行为，一次可以下单多个商品，所以品类 ID 和产品 ID 可以是多个，id 之 间采用逗号分隔，如果本次不是下单行为，则数据采用 null 表示
+- 针对于下单行为，一次可以下单多个商品，所以品类 ID 和产品 ID 可以是多个，id 之间采用逗号分隔，如果本次不是下单行为，则数据采用 null 表示
 - 支付行为和下单行为类似
 
 详细字段说明：
 
-|      |      |      |      |
-| ---- | ---- | ---- | ---- |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
-|      |      |      |      |
+| 编号 | 字段名称           | 字段类型 | 字段含义                     |
+| ---- | ------------------ | -------- | ---------------------------- |
+| 1    | date               | String   | 用户点击行为的日期           |
+| 2    | user_id            | Long     | 用户的ID                     |
+| 3    | session_id         | String   | Session的ID                  |
+| 4    | page_id            | Long     | 某个页面的ID                 |
+| 5    | action_time        | String   | 动作的时间点                 |
+| 6    | search_keyword     | String   | 用户搜索的关键词             |
+| 7    | click_category_id  | Long     | 某一个商品品类的ID           |
+| 8    | click_prodcut_id   | Long     | 某一个商品的ID               |
+| 9    | order_category_ids | String   | 一次订单中所有品类的ID集合   |
+| 10   | order_product_ids  | String   | 一次订单中所有商品的 ID 集合 |
+| 11   | py_category_ids    | String   | 一次支付中所有品类的 ID 集合 |
+| 12   | pay_product_ids    | String   | 一次支付中所有商品的 ID 集合 |
+| 13   | city_id            | Long     | 城市 id                      |
 
 样例类：
 
 ```scala
-
+  //用户访问动作表
+  case class UserVisitAction(
+                              date: String, //用户点击行为的日期
+                              user_id: Long, //用户的ID
+                              session_id: String, //Session的ID
+                              page_id: Long, //某个页面的ID
+                              action_time: String, //动作的时间点
+                              search_keyword: String, //用户搜索的关键词
+                              click_category_id: Long, //某一个商品品类的ID
+                              click_product_id: Long, //某一个商品的ID
+                              order_category_ids: String, //一次订单中所有品类的ID集合
+                              order_product_ids: String, //一次订单中所有商品的ID集合
+                              pay_category_ids: String, //一次支付中所有品类的ID集合
+                              pay_product_ids: String, //一次支付中所有商品的ID集合
+                              city_id: Long
+                            ) //城市 id
 ```
 
 ## 需求 1：Top10 热门品类
@@ -6903,17 +7742,15 @@ object Spark01_RDD_IO_Save {
 
 ### 需求说明
 
-品类是指产品的分类，大型电商网站品类分多级，咱们的项目中品类只有一级，不同的 公司可能对热门的定义不一样。我们按照每个品类的点击、下单、支付的量来统计热门品类。
+品类是指产品的分类，大型电商网站品类分多级，咱们的项目中品类只有一级，不同的公司可能对热门的定义不一样。我们按照每个品类的点击、下单、支付的量来统计热门品类。
 
-鞋 点击数 下单数 支付数 
-
-衣服 点击数 下单数 支付数
-
-电脑 点击数 下单数 支付数
+- 鞋 	点击数 下单数 支付数 
+- 衣服   点击数 下单数 支付数
+- 电脑   点击数 下单数 支付数
 
 例如，综合排名 = 点击数*20%+下单数*30%+支付数*50%
 
-本项目需求优化为：**先按照点击数排名，靠前的就排名高；如果点击数相同，再比较下 单数；下单数再相同，就比较支付数**
+本项目需求优化为：**先按照点击数排名，靠前的就排名高；如果点击数相同，再比较下单数；下单数再相同，就比较支付数**
 
 ### 实现方案一
 
@@ -6925,6 +7762,194 @@ object Spark01_RDD_IO_Save {
 
 #### 需求实现
 
+```scala
+package com.bigdata.core.req
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.{SparkConf, SparkContext}
+
+/**
+ * @program: spark-learning
+ * @description: ${description}
+ * @author: JunWen
+ * @create: 2024-04-26 16:01
+ * */
+object Spark01_Req1_HotCategoryTop10Analysis {
+
+  def main(args: Array[String]): Unit = {
+    // TODO : Top10热门品类
+    val sparkConf = new SparkConf().setMaster("local[*]").setAppName("HotCategoryTop10Analysis")
+    val sparkContext = new SparkContext(sparkConf)
+
+
+    // 1. 读取原始日志数据
+    val actionRDD = sparkContext.textFile("data/user_visit_action.txt")
+
+    // 2. 统计品类的点击数量：（品类ID，点击数量）
+    val clickActionRDD = actionRDD.filter(
+      action => {
+        val datas = action.split("_")
+        datas(6) != "-1"
+      }
+    )
+
+    val clickCountRDD = clickActionRDD.map(
+      action => {
+        val datas = action.split("_")
+        (datas(6), 1)
+      }
+    ).reduceByKey(_ + _)
+
+    // 3. 统计品类的下单数量：（品类ID，下单数量）
+    val orderActionRDD = actionRDD.filter(
+      action => {
+        val datas = action.split("_")
+        datas(8) != "null"
+      }
+    )
+    // orderid => 1,2,3
+    // 【(1,1)，(2,1)，(3,1)】
+    val orderCountRDD = orderActionRDD.flatMap(
+      action => {
+        val datas = action.split("_")
+        val cid = datas(8)
+        val cids = cid.split(",")
+        cids.map(id => (id, 1))
+      }
+    ).reduceByKey(_ + _)
+
+
+    // 4. 统计品类的支付数量：（品类ID，支付数量）
+    val payActionRDD = actionRDD.filter(
+      action => {
+        val datas = action.split("_")
+        datas(10) != "null"
+      }
+    )
+
+    // orderid => 1,2,3
+    // 【(1,1)，(2,1)，(3,1)】
+    val payCountRDD = payActionRDD.flatMap(
+      action => {
+        val datas = action.split("_")
+        val cid = datas(10)
+        val cids = cid.split(",")
+        cids.map(id => (id, 1))
+      }
+    ).reduceByKey(_ + _)
+
+    // 5. 将品类进行排序，并且取前10名
+    //    点击数量排序，下单数量排序，支付数量排序
+    //    元组排序：先比较第一个，再比较第二个，再比较第三个，依此类推
+    //    ( 品类ID, ( 点击数量, 下单数量, 支付数量 ) )
+    //
+    val cogroupRDD: RDD[(String, (Iterable[Int], Iterable[Int], Iterable[Int]))] = clickCountRDD.cogroup(orderCountRDD, payCountRDD)
+    val analysisRDD = cogroupRDD.mapValues {
+
+      case (clickIter, orderIter, payIter) => {
+        var clickCnt = 0
+        val clickIterator = clickIter.iterator
+        if (clickIterator.hasNext) {
+          clickCnt = clickIterator.next()
+        }
+
+        var orderCnt = 0
+        val orderIterator = orderIter.iterator
+        if (orderIterator.hasNext) {
+          orderCnt = orderIterator.next()
+        }
+        var payCnt = 0
+        val payIterator = payIter.iterator
+        if (payIterator.hasNext) {}
+        payCnt = payIterator.next()
+
+        (clickCnt, orderCnt, payCnt)
+      }
+    }
+
+    val resultRDD = analysisRDD.sortBy(_._2, false).take(10)
+
+
+    // 6. 将结果采集到控制台打印出来
+    resultRDD.foreach(println)
+
+    sparkContext.stop()
+  }
+
+}
+```
+
+以上代码输出如下
+
+```
+(15,(6120,1672,1259))
+(2,(6119,1767,1196))
+(20,(6098,1776,1244))
+(12,(6095,1740,1218))
+(11,(6093,1781,1202))
+(17,(6079,1752,1231))
+(7,(6074,1796,1252))
+(9,(6045,1736,1230))
+(19,(6044,1722,1158))
+(13,(6036,1781,1161))
+```
+
+> 这种方式会出现两个问题
+>
+> 1. actionRDD重复使用
+>
+> 2. cogroup性能可能较低(因为存在大量的shuffle操作),源码哪下
+>
+>    `PairRDDFunctions.scala`
+>
+>    ```scala
+>      def cogroup[W1, W2, W3](other1: RDD[(K, W1)],
+>          other2: RDD[(K, W2)],
+>          other3: RDD[(K, W3)],
+>          partitioner: Partitioner)
+>          : RDD[(K, (Iterable[V], Iterable[W1], Iterable[W2], Iterable[W3]))] = self.withScope {
+>        if (partitioner.isInstanceOf[HashPartitioner] && keyClass.isArray) {
+>          throw SparkCoreErrors.hashPartitionerCannotPartitionArrayKeyError()
+>        }
+>        // 点击 进入,如下
+>        val cg = new CoGroupedRDD[K](Seq(self, other1, other2, other3), partitioner)
+>        cg.mapValues { case Array(vs, w1s, w2s, w3s) =>
+>           (vs.asInstanceOf[Iterable[V]],
+>             w1s.asInstanceOf[Iterable[W1]],
+>             w2s.asInstanceOf[Iterable[W2]],
+>             w3s.asInstanceOf[Iterable[W3]])
+>        }
+>      }
+>    ```
+>
+>    `CoGroupedRDD.scala`
+>
+>    ```scala
+>    class CoGroupedRDD[K: ClassTag](
+>        @transient var rdds: Seq[RDD[_ <: Product2[K, _]]],
+>        part: Partitioner)
+>      extends RDD[(K, Array[Iterable[_]])](rdds.head.context, Nil) {
+>          ......
+>         // 重点看这个方法
+>    override def getDependencies: Seq[Dependency[_]] = {
+>        rdds.map { rdd: RDD[_] =>
+>          // 判断分区器是否相同
+>          if (rdd.partitioner == Some(part)) {
+>            logDebug("Adding one-to-one dependency with " + rdd)
+>            new OneToOneDependency(rdd)
+>          } else {
+>            logDebug("Adding shuffle dependency with " + rdd)
+>            // 不相同则进入shuffle依赖,说明当分区规则不相同则会进入这里,不同数据源肯定分区数是不相同的,这是无法保证的
+>            new ShuffleDependency[K, Any, CoGroupCombiner](
+>              rdd.asInstanceOf[RDD[_ <: Product2[K, _]]], part, serializer)
+>          }
+>        }
+>      }
+>             
+>          ......
+>    }
+>    ```
+
 ### 实现方案二
 
 #### 需求分析
@@ -6935,6 +7960,212 @@ object Spark01_RDD_IO_Save {
 
 #### 需求实现
 
+1. 方式一
+
+   ```scala
+   package com.bigdata.core.req
+   
+   import org.apache.spark.rdd.RDD
+   import org.apache.spark.{SparkConf, SparkContext}
+   
+   /**
+    * @program: spark-learning
+    * @description: 统计用户页面操作
+    * @author: JunWen
+    * @create: 2024-04-26 16:01
+    * */
+   object Spark02_Req1_HotCategoryTop10Analysis {
+   
+     def main(args: Array[String]): Unit = {
+       // TODO : Top10热门品类
+       val sparkConf = new SparkConf().setMaster("local[*]").setAppName("HotCategoryTop10Analysis")
+       val sparkContext = new SparkContext(sparkConf)
+   
+       // Q : actionRDD重复使用
+       // Q : cogroup性能可能较低
+   
+       // 1. 读取原始日志数据
+       val actionRDD = sparkContext.textFile("data/user_visit_action.txt")
+   
+       // 2. 统计品类的点击数量：（品类ID，点击数量）
+       val clickActionRDD = actionRDD.filter(
+         action => {
+           val datas = action.split("_")
+           datas(6) != "-1"
+         }
+       )
+   
+       val clickCountRDD = clickActionRDD.map(
+         action => {
+           val datas = action.split("_")
+           (datas(6), 1)
+         }
+       ).reduceByKey(_ + _)
+   
+       // 3. 统计品类的下单数量：（品类ID，下单数量）
+       val orderActionRDD = actionRDD.filter(
+         action => {
+           val datas = action.split("_")
+           datas(8) != "null"
+         }
+       )
+       // orderid => 1,2,3
+       // 【(1,1)，(2,1)，(3,1)】
+       val orderCountRDD = orderActionRDD.flatMap(
+         action => {
+           val datas = action.split("_")
+           val cid = datas(8)
+           val cids = cid.split(",")
+           cids.map(id => (id, 1))
+         }
+       ).reduceByKey(_ + _)
+   
+   
+       // 4. 统计品类的支付数量：（品类ID，支付数量）
+       val payActionRDD = actionRDD.filter(
+         action => {
+           val datas = action.split("_")
+           datas(10) != "null"
+         }
+       )
+   
+       // orderid => 1,2,3
+       // 【(1,1)，(2,1)，(3,1)】
+       val payCountRDD = payActionRDD.flatMap(
+         action => {
+           val datas = action.split("_")
+           val cid = datas(10)
+           val cids = cid.split(",")
+           cids.map(id => (id, 1))
+         }
+       ).reduceByKey(_ + _)
+   
+       // (品类ID, 点击数量) => (品类ID, (点击数量, 0, 0))
+       // (品类ID, 下单数量) => (品类ID, (0, 下单数量, 0))
+       //                    => (品类ID, (点击数量, 下单数量, 0))
+       // (品类ID, 支付数量) => (品类ID, (0, 0, 支付数量))
+       //                    => (品类ID, (点击数量, 下单数量, 支付数量))
+       // ( 品类ID, ( 点击数量, 下单数量, 支付数量 ) )
+   
+       // 5. 将品类进行排序，并且取前10名
+       //    点击数量排序，下单数量排序，支付数量排序
+       //    元组排序：先比较第一个，再比较第二个，再比较第三个，依此类推
+       //    ( 品类ID, ( 点击数量, 下单数量, 支付数量 ) )
+       //
+       val clickRDD = clickCountRDD.map {
+         case (cid, cnt) => {
+           (cid, (cnt, 0, 0))
+         }
+       }
+   
+       val orderRDD = orderCountRDD.map {
+         case (cid, cnt) => {
+           (cid, (0, cnt, 0))
+         }
+       }
+   
+       val payRDD = payCountRDD.map {
+         case (cid, cnt) => {
+           (cid, (0, 0, cnt))
+         }
+       }
+   
+       // 将三个数据源合并在一起，统一进行聚合计算
+       val sourceRDD: RDD[(String, (Int, Int, Int))] = clickRDD.union(orderRDD).union(payRDD)
+   
+       val analysisRDD = sourceRDD.reduceByKey(
+         (t1, t2) => {
+           (t1._1 + t2._1, t1._2 + t2._2, t1._3 + t2._3)
+         }
+       )
+   
+   
+       val resultRDD = analysisRDD.sortBy(_._2, false).take(10)
+   
+   
+       // 6. 将结果采集到控制台打印出来
+       resultRDD.foreach(println)
+   
+       sparkContext.stop()
+     }
+   
+   }
+   
+   ```
+
+   > 上述方法使用了大量的`reduceByKey`因此也会存在大量的shuffle操作
+
+2. 方式二
+
+   ```scala
+   package com.bigdata.core.req
+   
+   import org.apache.spark.rdd.RDD
+   import org.apache.spark.{SparkConf, SparkContext}
+   
+   /**
+    * @program: spark-learning
+    * @description: 统计用户页面操作
+    * @author: JunWen
+    * @create: 2024-04-26 16:01
+    * */
+   object Spark03_Req1_HotCategoryTop10Analysis {
+   
+     def main(args: Array[String]): Unit = {
+       // TODO : Top10热门品类
+       val sparkConf = new SparkConf().setMaster("local[*]").setAppName("HotCategoryTop10Analysis")
+       val sparkContext = new SparkContext(sparkConf)
+   
+       // Q : 存在大量的shuffle操作（reduceByKey）
+       // reduceByKey 聚合算子，spark会提供优化，缓存
+   
+       // 1. 读取原始日志数据
+       val actionRDD = sparkContext.textFile("data/user_visit_action.txt")
+   
+       // 2. 将数据转换结构
+       //    点击的场合 : ( 品类ID，( 1, 0, 0 ) )
+       //    下单的场合 : ( 品类ID，( 0, 1, 0 ) )
+       //    支付的场合 : ( 品类ID，( 0, 0, 1 ) )
+       val flatRDD: RDD[(String, (Int, Int, Int))] = actionRDD.flatMap(
+         action => {
+           val datas = action.split("_")
+           if (datas(6) != "-1") {
+             // 点击的场合
+             List((datas(6), (1, 0, 0)))
+           } else if (datas(8) != "null") {
+             // 下单的场合
+             val ids = datas(8).split(",")
+             ids.map(id => (id, (0, 1, 0)))
+           } else if (datas(10) != "null") {
+             val ids = datas(10).split(",")
+             ids.map(id => (id, (0, 0, 1)))
+           } else {
+             Nil
+           }
+         }
+       )
+   
+       // 3. 将相同的品类ID的数据进行分组聚合
+       //    ( 品类ID，( 点击数量, 下单数量, 支付数量 ) )
+       val analysisRDD = flatRDD.reduceByKey(
+         (t1, t2) => {
+           (t1._1 + t2._1, t1._2 + t2._2, t1._3 + t2._3)
+         }
+       )
+       // 4. 将统计结果根据数量进行降序处理，取前10名
+       val resultRDD = analysisRDD.sortBy(_._2, false).take(10)
+   
+       // 5. 将结果采集到控制台打印出来
+       resultRDD.foreach(println)
+   
+       sparkContext.stop()
+     }
+   
+   }
+   ```
+   
+   > 上述方法依然使用了`reduceByKey`因此也会可能有shuffle操作
+
 ### 实现方案三
 
 #### 需求分析
@@ -6942,6 +8173,173 @@ object Spark01_RDD_IO_Save {
 使用累加器的方式聚合数据
 
 #### 需求实现
+
+```scala
+package com.bigdata.core.req
+
+import org.apache.spark.{SparkConf, SparkContext}
+
+import org.apache.spark.util.AccumulatorV2
+
+import scala.collection.mutable
+
+/**
+ * @program: spark-learning
+ * @description: 累加器方式 计算 热门品类
+ * @author: JunWen
+ * @create: 2024-04-27 08:37
+ * */
+object Spark04_Req1_HotCategoryTop10Analysis3 {
+
+
+  def main(args: Array[String]): Unit = {
+    // TODO : Top10热门品类
+    val sparkConf = new SparkConf().setMaster("local[*]").setAppName("HotCategoryTop10Analysis")
+    val sparkContext = new SparkContext(sparkConf)
+
+    // Q : 存在大量的shuffle操作（reduceByKey）
+    // reduceByKey 聚合算子，spark会提供优化，缓存
+
+    // 1. 读取原始日志数据
+    val actionRDD = sparkContext.textFile("data/user_visit_action.txt")
+
+    val acc = new HotCategoryAccumulator
+    sparkContext.register(acc, "hotCategory")
+
+    // 2. 将数据转换结构
+    actionRDD.foreach(
+      action => {
+        val datas = action.split("_")
+        if (datas(6) != "-1") {
+          // 点击的场合
+          acc.add(datas(6), "click")
+        } else if (datas(8) != "null") {
+          // 下单的场合
+          val ids = datas(8).split(",")
+          ids.foreach(
+            id => {
+              acc.add((id, "order"))
+            }
+          )
+        } else if (datas(10) != "null") {
+          // 支付的场合
+          val ids = datas(10).split(",")
+          ids.foreach(
+            id => {
+              acc.add((id, "pay"))
+            }
+          )
+        }
+      }
+    )
+
+    val accVal: mutable.Map[String, HotCategory] = acc.value
+    val categories: mutable.Iterable[HotCategory] = accVal.map(_._2)
+
+
+    val soft = categories.toList.sortWith((
+      (left, right) => {
+        if (left.clickCnt > right.clickCnt) {
+          true
+        } else if (left.clickCnt == right.clickCnt) {
+          if (left.orderCnt > right.orderCnt) {
+            true
+          } else if (left.orderCnt == right.orderCnt) {
+            left.payCnt > right.payCnt
+          } else {
+            false
+          }
+        } else {
+          false
+        }
+      }
+      ))
+
+
+    // 5. 将结果采集到控制台打印出来
+    soft.take(10).foreach(println)
+
+    sparkContext.stop()
+  }
+
+  case class HotCategory(cid: String, var clickCnt: Int, var orderCnt: Int, var payCnt: Int)
+
+  /**
+   * 自定义累加器
+   * 1. 继承AccumulatorV2，定义泛型
+   * IN : ( 品类ID, 行为类型 )
+   * OUT : mutable.Map[String, HotCategory]
+   * 2. 重写方法（6）
+   */
+  class HotCategoryAccumulator extends AccumulatorV2[(String, String), mutable.Map[String, HotCategory]] {
+
+    private val hcMap = mutable.Map[String, HotCategory]()
+
+    override def isZero: Boolean = {
+      hcMap.isEmpty
+    }
+
+    override def copy(): AccumulatorV2[(String, String), mutable.Map[String, HotCategory]] = {
+      new HotCategoryAccumulator
+    }
+
+    override def reset(): Unit = {
+      hcMap.clear()
+    }
+
+    override def add(v: (String, String)): Unit = {
+
+      val cid = v._1
+      val actionType = v._2
+      val category: HotCategory = hcMap.getOrElse(cid, HotCategory(cid, 0, 0, 0))
+      if (actionType == "click") {
+        category.clickCnt += 1
+      } else if (actionType == "order") {
+        category.orderCnt += 1
+      } else if (actionType == "pay") {
+        category.payCnt += 1
+      }
+      hcMap.update(cid, category)
+    }
+
+    override def merge(other: AccumulatorV2[(String, String), mutable.Map[String, HotCategory]]): Unit = {
+
+      val map1 = this.hcMap
+      val map2 = other.value
+
+      map2.foreach {
+
+        case (cid, hc) => {
+          val category: HotCategory = map1.getOrElse(cid, HotCategory(cid, 0, 0, 0))
+          category.clickCnt += hc.clickCnt
+          category.orderCnt += hc.orderCnt
+          category.payCnt += hc.payCnt
+          map1.update(cid, category)
+        }
+      }
+
+    }
+
+    override def value: mutable.Map[String, HotCategory] = hcMap
+  }
+}
+
+```
+
+上这样写代码输出如下
+
+```
+HotCategory(15,6120,1672,1259)
+HotCategory(2,6119,1767,1196)
+HotCategory(20,6098,1776,1244)
+HotCategory(12,6095,1740,1218)
+HotCategory(11,6093,1781,1202)
+HotCategory(17,6079,1752,1231)
+HotCategory(7,6074,1796,1252)
+HotCategory(9,6045,1736,1230)
+HotCategory(19,6044,1722,1158)
+HotCategory(13,6036,1781,1161)
+```
 
 ## 需求 2：Top10 热门品类中每个品类的 Top10 活跃 Session 统计
 
@@ -6953,13 +8351,121 @@ object Spark01_RDD_IO_Save {
 
 ### 功能实现
 
+```scala
+package com.bigdata.core.req
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.{SparkConf, SparkContext}
+
+/**
+ * @program: spark-learning
+ * @description: Top10 热门品类中每个品类的 Top10 活跃 Session 统计
+ * @author: JunWen
+ * @create: 2024-04-27 10:29
+ * */
+object Spark05_Req2_HotCategoryTop10SessionAnalysis {
+
+  def main(args: Array[String]): Unit = {
+    // TODO : Top10热门品类
+    val sparkConf = new SparkConf().setMaster("local[*]").setAppName("HotCategoryTop10Analysis")
+    val sparkContext = new SparkContext(sparkConf)
+
+    // 1. 读取原始日志数据
+    val actionRDD = sparkContext.textFile("data/user_visit_action.txt")
+    actionRDD.cache()
+
+    val top10Ids: Array[String] = top10Category(actionRDD)
+
+    // 1. 过滤原始数据,保留点击和前10品类ID
+    val filterActionRDD = actionRDD.filter(
+      action => {
+        val datas = action.split("_")
+        if (datas(6) != "-1") {
+          top10Ids.contains(datas(6))
+        } else {
+          false
+        }
+      }
+    )
+
+
+    // 2. 根据品类ID和sessionid进行点击量的统计
+    val reduceRDD = filterActionRDD.map(
+      action => {
+        val datas = action.split("_")
+        ((datas(6), datas(2)), 1)
+      }
+    ).reduceByKey(_ + _)
+
+
+    // 3. 将统计的结果进行结构的转换
+    //  (（ 品类ID，sessionId ）,sum) => ( 品类ID，（sessionId, sum） )
+    val mapRDD = reduceRDD.map {
+      case ((cid, sid), sum) => {
+        (cid, (sid, sum))
+      }
+    }
+
+    // 4. 相同的品类进行分组
+    val groupRDD: RDD[(String, Iterable[(String, Int)])] = mapRDD.groupByKey()
+
+
+    // 5. 将分组后的数据进行点击量的排序，取前10名
+    val resultRDD = groupRDD.mapValues(
+      iter => {
+        iter.toList.sortBy(_._2)(Ordering.Int.reverse).take(10)
+      }
+    )
+
+    resultRDD.collect().foreach(println)
+
+    sparkContext.stop()
+  }
+
+  def top10Category(actionRDD: RDD[String]) = {
+
+    val flatRDD: RDD[(String, (Int, Int, Int))] = actionRDD.flatMap(
+      action => {
+        val datas = action.split("_")
+        if (datas(6) != "-1") {
+          // 点击的场合
+          List((datas(6), (1, 0, 0)))
+        } else if (datas(8) != "null") {
+          // 下单的场合
+          val ids = datas(8).split(",")
+          ids.map(id => (id, (0, 1, 0)))
+
+        } else if (datas(10) != "null") {
+          // 支付的场合
+          val ids = datas(10).split(", ")
+          ids.map(id => (id, (0, 0, 1)))
+        } else {
+          Nil
+        }
+      }
+    )
+
+    val analysisRDD = flatRDD.reduceByKey(
+      (t1, t2) => {
+        (t1._1 + t2._1, t1._2 + t2._2, t1._3 + t2._3)
+      }
+    )
+
+    analysisRDD.sortBy(_._2, false).take(10).map(_._1)
+
+  }
+
+}
+
+```
+
 ## 需求 3：页面单跳转换率统计
 
 ### 需求说明
 
 1. 页面单跳转化率
 
-   计算页面单跳转化率，什么是页面单跳转换率，比如一个用户在一次 Session 过程中 访问的页面路径 3,5,7,9,10,21，那么页面 3 跳到页面 5 叫一次单跳，7-9 也叫一次单跳， 那么单跳转化率就是要统计页面点击的概率。 
+   计算页面单跳转化率，什么是页面单跳转换率，比如一个用户在一次 Session 过程中访问的页面路径 3,5,7,9,10,21，那么页面 3 跳到页面 5 叫一次单跳，7-9 也叫一次单跳， 那么单跳转化率就是要统计页面点击的概率。 
 
    比如：计算 3-5 的单跳转化率，先获取符合条件的 Session 对于页面 3 的访问次数（PV） 为 A，然后获取符合条件的 Session 中访问了页面 3 又紧接着访问了页面 5 的次数为 B， 那么 B/A 就是 3-5 的页面单跳转化率。
 
@@ -6967,13 +8473,425 @@ object Spark01_RDD_IO_Save {
 
 2. 统计页面单跳转化率意义
 
-   产品经理和运营总监，可以根据这个指标，去尝试分析，整个网站，产品，各个页面的 表现怎么样，是不是需要去优化产品的布局；吸引用户最终可以进入最后的支付页面
+   产品经理和运营总监，可以根据这个指标，去尝试分析，整个网站，产品，各个页面的表现怎么样，是不是需要去优化产品的布局；吸引用户最终可以进入最后的支付页面
 
    数据分析师，可以此数据做更深一步的计算和分析
 
-   企业管理层，可以看到整个公司的网站，各个页面的之间的跳转的表现如何，可以适当 调整公司的经营战略或策略。
+   企业管理层，可以看到整个公司的网站，各个页面的之间的跳转的表现如何，可以适当调整公司的经营战略或策略。
 
 ### 需求分析
 
+![](../photos/spark/73.jpg)
+
 ### 功能实现
+
+```scala
+package com.bigdata.core.req
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.{SparkConf, SparkContext}
+
+/**
+ * @program: spark-learning
+ * @description: 页面单跳转换率统计
+ * @author: JunWen
+ * @create: 2024-04-29 16:51
+ * */
+object Spark06_Req3_PageflowAnalysis {
+
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("PageFlowAnalysis")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+    val actionRDD = sparkContext.textFile("data/user_visit_action.txt")
+
+    val actionDataRDD = actionRDD.map(
+      acttion => {
+        val datas = acttion.split("_")
+        UserVisitAction(
+          datas(0),
+          datas(1).toLong,
+          datas(2),
+          datas(3).toLong,
+          datas(4),
+          datas(5),
+          datas(6).toLong,
+          datas(7).toLong,
+          datas(8),
+          datas(9),
+          datas(10),
+          datas(11),
+          datas(12).toLong
+        )
+      }
+    )
+
+    actionDataRDD.cache()
+
+
+    //  计算分母
+    val pageIdToCountMap: Map[Long, Long] = actionDataRDD.map(
+      action => {
+        (action.page_id, 1L)
+      }
+    ).reduceByKey(_ + _).collect().toMap
+
+    //  计算分子
+    // 根据session进行分组
+    val sessionRDD: RDD[(String, Iterable[UserVisitAction])] = actionDataRDD.groupBy(_.session_id)
+
+    // 分组后，根据访问时间进行排序（升序）
+    val mvRDD: RDD[(String, List[((Long, Long), Int)])] = sessionRDD.mapValues(
+      iter => {
+        val sortList: List[UserVisitAction] = iter.toList.sortBy(_.action_time)
+        // 【1，2，3，4】
+        // 【1，2】，【2，3】，【3，4】
+        // 【1-2，2-3，3-4】
+        // Sliding : 滑窗
+        // 【1，2，3，4】
+        // 【2，3，4】
+        // zip : 拉链
+        val flowIds: List[Long] = sortList.map(_.page_id)
+        val pageflowIds: List[(Long, Long)] = flowIds.zip(flowIds.tail)
+
+        pageflowIds.map(
+          t => {
+            (t, 1)
+          }
+        )
+      }
+    )
+
+    // ((1,2),1)
+    val flatRDD = mvRDD.map(_._2).flatMap(list => list)
+    // ((1,2),1) => ((1,2),sum)
+    val dataRDD = flatRDD.reduceByKey(_ + _)
+
+    //  计算单跳转换率
+    // 分子除以分母
+
+    dataRDD.foreach {
+      case ((pageid1, pageid2), sum) => {
+        val lon = pageIdToCountMap.getOrElse(pageid1, 0L)
+        println(s"页面${pageid1}跳转到页面${pageid2}单跳转换率为:" + (sum.toDouble / lon))
+      }
+    }
+
+    // TODO 关闭连接
+    sparkContext.stop()
+  }
+
+
+  //用户访问动作表
+  case class UserVisitAction(
+                              date: String, //用户点击行为的日期
+                              user_id: Long, //用户的ID
+                              session_id: String, //Session的ID
+                              page_id: Long, //某个页面的ID
+                              action_time: String, //动作的时间点
+                              search_keyword: String, //用户搜索的关键词
+                              click_category_id: Long, //某一个商品品类的ID
+                              click_product_id: Long, //某一个商品的ID
+                              order_category_ids: String, //一次订单中所有品类的ID集合
+                              order_product_ids: String, //一次订单中所有商品的ID集合
+                              pay_category_ids: String, //一次支付中所有品类的ID集合
+                              pay_product_ids: String, //一次支付中所有商品的ID集合
+                              city_id: Long
+                            ) //城市 id
+}
+
+```
+
+以上代码执行结果如下
+
+```
+页面35跳转到页面20单跳转换率为:0.02265902265902266
+页面48跳转到页面13单跳转换率为:0.0175
+页面33跳转到页面32单跳转换率为:0.01680672268907563
+页面46跳转到页面44单跳转换率为:0.02006783493499152
+页面34跳转到页面31单跳转换率为:0.02185792349726776
+页面3跳转到页面15单跳转换率为:0.017429193899782137
+页面26跳转到页面46单跳转换率为:0.018256130790190735
+......
+```
+
+增加过滤页面功能(在实际生产环境中,有大部分页面是无人访问的,因此只需对特定页面进行统计即可)
+
+```scala
+package com.bigdata.core.req
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.{SparkConf, SparkContext}
+
+/**
+ * @program: spark-learning
+ * @description: 页面单跳转换率统计
+ * @author: JunWen
+ * @create: 2024-04-29 16:51
+ * */
+object Spark06_Req3_PageflowfilterAnalysis {
+
+  def main(args: Array[String]): Unit = {
+    val sparkConf = new SparkConf().setMaster("local").setAppName("PageFlowAnalysis")
+    val sparkContext: SparkContext = new SparkContext(sparkConf)
+    val actionRDD = sparkContext.textFile("data/user_visit_action.txt")
+
+    val actionDataRDD = actionRDD.map(
+      acttion => {
+        val datas = acttion.split("_")
+        UserVisitAction(
+          datas(0),
+          datas(1).toLong,
+          datas(2),
+          datas(3).toLong,
+          datas(4),
+          datas(5),
+          datas(6).toLong,
+          datas(7).toLong,
+          datas(8),
+          datas(9),
+          datas(10),
+          datas(11),
+          datas(12).toLong
+        )
+      }
+    )
+
+    actionDataRDD.cache()
+
+    // 对指定的页面连续跳转进行统计
+    // 1-2,2-3,3-4,4-5,5-6,6-7
+    val ids = List[Long](1, 2, 3, 4, 5, 6, 7)
+    val okflowIds: List[(Long, Long)] = ids.zip(ids.tail)
+
+    //  计算分母
+    val pageIdToCountMap: Map[Long, Long] = actionDataRDD.filter(
+      // 把最后的页面过滤了,最后的页面根本无需统计,分母根本不可能为7
+      action => {
+        ids.init.contains(action.page_id)
+      }
+    ).map(
+      action => {
+        (action.page_id, 1L)
+      }
+    ).reduceByKey(_ + _).collect().toMap
+
+    //  计算分子
+    // 根据session进行分组
+    val sessionRDD: RDD[(String, Iterable[UserVisitAction])] = actionDataRDD.groupBy(_.session_id)
+
+    // 分组后，根据访问时间进行排序（升序）
+    val mvRDD: RDD[(String, List[((Long, Long), Int)])] = sessionRDD.mapValues(
+      iter => {
+        val sortList: List[UserVisitAction] = iter.toList.sortBy(_.action_time)
+        // 【1，2，3，4】
+        // 【1，2】，【2，3】，【3，4】
+        // 【1-2，2-3，3-4】
+        // Sliding : 滑窗
+        // 【1，2，3，4】
+        // 【2，3，4】
+        // zip : 拉链
+        val flowIds: List[Long] = sortList.map(_.page_id)
+        val pageflowIds: List[(Long, Long)] = flowIds.zip(flowIds.tail)
+
+        pageflowIds.filter(
+          t => {
+            okflowIds.contains(t)
+          }
+        ).map(
+          t => {
+            (t, 1)
+          }
+        )
+      }
+    )
+
+    // ((1,2),1)
+    val flatRDD = mvRDD.map(_._2).flatMap(list => list)
+    // ((1,2),1) => ((1,2),sum)
+    val dataRDD = flatRDD.reduceByKey(_ + _)
+
+    //  计算单跳转换率
+    // 分子除以分母
+
+    dataRDD.foreach {
+      case ((pageid1, pageid2), sum) => {
+        val lon = pageIdToCountMap.getOrElse(pageid1, 0L)
+        println(s"页面${pageid1}跳转到页面${pageid2}单跳转换率为:" + (sum.toDouble / lon))
+      }
+    }
+
+    // TODO 关闭连接
+    sparkContext.stop()
+  }
+
+
+  //用户访问动作表
+  case class UserVisitAction(
+                              date: String, //用户点击行为的日期
+                              user_id: Long, //用户的ID
+                              session_id: String, //Session的ID
+                              page_id: Long, //某个页面的ID
+                              action_time: String, //动作的时间点
+                              search_keyword: String, //用户搜索的关键词
+                              click_category_id: Long, //某一个商品品类的ID
+                              click_product_id: Long, //某一个商品的ID
+                              order_category_ids: String, //一次订单中所有品类的ID集合
+                              order_product_ids: String, //一次订单中所有商品的ID集合
+                              pay_category_ids: String, //一次支付中所有品类的ID集合
+                              pay_product_ids: String, //一次支付中所有商品的ID集合
+                              city_id: Long
+                            ) //城市 id
+}
+
+```
+
+以上代码输出如下结果
+
+```
+页面4跳转到页面5单跳转换率为:0.018323153803442533
+页面3跳转到页面4单跳转换率为:0.016884531590413945
+页面5跳转到页面6单跳转换率为:0.014594442885209093
+页面6跳转到页面7单跳转换率为:0.0192040077929307
+页面1跳转到页面2单跳转换率为:0.01510989010989011
+页面2跳转到页面3单跳转换率为:0.019949423995504357
+```
+
+## 整合框架
+
+### 工具类
+
+```scala
+object EnvUtil {
+
+  private val sparkContextLocal = new ThreadLocal[SparkContext]()
+
+  def put(sc: SparkContext): Unit = {
+    sparkContextLocal.set(sc)
+  }
+
+  def take(): SparkContext = {
+    sparkContextLocal.get()
+  }
+
+  def clear(): Unit = {
+    sparkContextLocal.remove()
+  }
+
+
+}
+```
+
+### Common
+
+- `TApplication`
+
+  ```scala
+  trait TApplication {
+  
+    def start(master: String = "local[*]", app: String = "Application")(op: => Unit): Unit = {
+  
+      val sparConf = new SparkConf().setMaster(master).setAppName(app)
+      val sparkContext = new SparkContext(sparConf)
+  
+      EnvUtil.put(sparkContext)
+  
+      try {
+        op
+      } catch {
+        case ex => println(ex.getMessage)
+      }
+      
+      sparkContext.stop()
+      EnvUtil.clear()
+  
+    }
+  
+  }
+  
+  ```
+
+- `TController`
+
+  ```scala
+  trait TController {
+  
+    def dispatch(): Unit
+  
+  }
+  
+  ```
+
+- `Dao`
+
+  ```scala
+  trait TDao {
+  
+    def readFile(path: String) = {
+      EnvUtil.take().textFile(path)
+    }
+  }
+  ```
+
+- `TService`
+
+  ```scala
+  trait TService {
+    def dataAnalysis(): Any
+  
+  }
+  ```
+
+
+
+### 持久层
+
+```scala
+class WordCountDao extends TDao {}
+```
+
+### 服务层
+
+```scala
+class WordCountService extends TService {
+
+  private val wordCountDao = new WordCountDao()
+
+  def dataAnalysis() = {
+    val lines = wordCountDao.readFile("data/word.txt")
+    val words = lines.flatMap(_.split(" "))
+    val wordToOne = words.map(word => (word, 1))
+    val wordToSum: RDD[(String, Int)] = wordToOne.reduceByKey(_ + _)
+    val array: Array[(String, Int)] = wordToSum.collect()
+    array
+  }
+}
+```
+
+### 控制层
+
+```scala
+class WordCountController extends TController {
+
+  private val wordCountService = new WordCountService()
+
+  override def dispatch(): Unit = {
+
+    val array = wordCountService.dataAnalysis()
+    array.foreach(println)
+  }
+}
+```
+
+### 应用
+
+```scala
+object WordCountApplication extends App with TApplication {
+
+  start() {
+    val controller = new WordCountController()
+    controller.dispatch()
+  }
+
+}
+```
 
